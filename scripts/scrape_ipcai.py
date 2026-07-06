@@ -9,19 +9,33 @@ under (e.g. "Accepted regular paper submissions" vs a long-abstract track).
 
 Google Sites serves the page's content pre-rendered as plain HTML (a paste
 from a Google Doc), so no JavaScript execution is needed -- it just needs to
-be parsed carefully. Each program entry is a run of bold (``font-weight:
-700``) spans holding the title, optionally prefixed with a non-bold
-``#<id>`` paper number, followed by a plain-weight author line. The exact
-markup shape differs by year:
+be parsed carefully. Every edition lists title before authors, but the exact
+markup shape -- and how to tell a real title apart from unrelated bold text
+elsewhere on the page -- differs enough to need three parsing modes:
 
-  * 2024/2025: title and authors are separate ``<p>`` paragraphs.
-  * 2026: title and authors share one ``<p>`` paragraph (separated by a
-    ``<br>``).
+  * ``standard`` (2024-2026): a bold paragraph holds the title (optionally
+    prefixed with a non-bold ``#<id>`` paper number), and the following
+    plain-weight paragraph (or the same paragraph, for 2026) holds the
+    authors.
+  * ``gated`` (2023): same title-then-authors order and the same markup as
+    2024-2026 (titles are either bare bold paragraphs -- some wrapped in a
+    ``<ul><li>``, some not -- or a non-bold ``#<id>`` marker plus a bold
+    title in one paragraph), but the page opens with a schedule/agenda
+    preamble (session times, chairs) that is *also* bold and would otherwise
+    be misread as titles. Paragraphs are ignored until the first ``<h2>``
+    heading containing "Session Information" is seen; everything from there
+    on is real paper content.
+  * ``id_suffix`` (2022): titles are marked with ``<strong>`` rather than
+    inline CSS, and the preamble has the same false-positive-bold problem as
+    2023 but without the ``<li>`` wrapping to fall back on. Instead, authors
+    are identified by their trailing ``[IPCAI-<n>]`` tag, and the title is
+    whatever bold-only paragraph immediately preceded that author paragraph.
 
-Both shapes are handled by accumulating bold vs. plain text per paragraph and
-deciding, per paragraph, whether the plain-weight text is a bare paper-number
-marker (-> authors follow in the next paragraph) or the author line itself.
 Section headings (``<h2>``) are tracked to fill the ``Session`` column.
+Author affiliations embedded in the 2022/2023 author lists (e.g. ``Jane Doe
+(MIT)``) and presenting-author ``*`` markers are stripped for consistency
+with the affiliation-free 2024-2026 lists. A handful of 2022 papers are
+listed twice on the source page; exact title+author duplicates are dropped.
 
 Output columns:
     Title, Authors, Session, Abstract, PDF, Paper Page
@@ -31,7 +45,7 @@ Output columns:
 standard library is used.
 
 Examples:
-    python scripts/scrape_ipcai.py                 # all years 2024-2026
+    python scripts/scrape_ipcai.py                 # all years 2022-2026
     python scripts/scrape_ipcai.py --year 2025      # a single edition
     python scripts/scrape_ipcai.py --limit 5        # quick smoke test
 """
@@ -54,16 +68,32 @@ USER_AGENT = (
 )
 
 SITES = {
+    "2022": "https://sites.google.com/view/ipcai2022/program",
+    "2023": "https://sites.google.com/view/ipcai-2023/program",
     "2024": "https://sites.google.com/view/ipcai2024/program",
     "2025": "https://sites.google.com/view/ipcai2025/program",
     "2026": "https://sites.google.com/view/ipcai2026/program",
 }
 
-YEARS = ("2024", "2025", "2026")
+YEARS = ("2022", "2023", "2024", "2025", "2026")
+
+# Per-year parser mode; see the module docstring for what each mode handles.
+# Years not listed here use "standard".
+_PARSER_CONFIG = {
+    "2022": {"mode": "id_suffix", "id_suffix_re": re.compile(r"\[IPCAI-\d+\]\s*$")},
+    "2023": {"mode": "gated", "gate_h2_re": re.compile(r"Session Information", re.IGNORECASE)},
+}
+_DEFAULT_CONFIG = {"mode": "standard"}
 
 ID_MARKER_RE = re.compile(r"^#?\s*\d+$")
 LEADING_ID_RE = re.compile(r"^#\s*\d+\s*")
 WS_RE = re.compile(r"\s+")
+TRAILING_STAR_RE = re.compile(r"\*+\s*$")
+TRAILING_AFFILIATION_RE = re.compile(r"\s*\([^()]*\)\s*$")
+
+
+def _config_for(year: str) -> dict:
+    return _PARSER_CONFIG.get(year, _DEFAULT_CONFIG)
 
 
 def log(msg: str) -> None:
@@ -92,14 +122,21 @@ def clean(text: str) -> str:
 class ProgramParser(HTMLParser):
     """Walk a Google-Sites-rendered program page and emit paper entries.
 
-    Bold (``font-weight: 700``) runs are titles; plain-weight runs are either
-    a bare ``#<id>`` marker (real authors follow in the next paragraph) or
-    the author line itself (when it shares the paragraph with the title).
+    Bold runs (``font-weight: 700`` inline style, or a ``<strong>``/``<b>``
+    element) are title candidates; plain-weight runs are either a bare
+    ``#<id>`` marker (real authors follow in the next paragraph), the author
+    line itself (when it shares the paragraph with the title), or -- in
+    ``id_suffix`` mode -- identified as the author line by a trailing
+    ``[IPCAI-<n>]`` tag instead of by paragraph order.
     """
 
-    def __init__(self) -> None:
+    def __init__(self, id_suffix_re: re.Pattern | None = None,
+                 gate_h2_re: re.Pattern | None = None) -> None:
         super().__init__(convert_charrefs=True)
         self.papers: list[dict] = []
+        self.id_suffix_re = id_suffix_re
+        self.gate_h2_re = gate_h2_re
+        self._gate_open = gate_h2_re is None
         self._bold_stack: list[bool] = []
         self._block: str | None = None  # "p" or "h2", or None outside both
         self._spans: list[tuple[bool, str]] = []
@@ -107,6 +144,7 @@ class ProgramParser(HTMLParser):
         self._session = ""
         self._pending_title: str | None = None
         self._pending_session = ""
+        self._last_bold_only: str | None = None  # id_suffix mode only
 
     # -- tag handling ---------------------------------------------------
     def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
@@ -114,13 +152,16 @@ class ProgramParser(HTMLParser):
         if tag in ("script", "style"):
             self._skip_depth += 1
             return
-        if tag == "span":
-            style = attrs_d.get("style") or ""
-            m = re.search(r"font-weight:\s*(\d+)", style)
-            if m:
-                bold = int(m.group(1)) >= 700
+        if tag in ("span", "strong", "b"):
+            if tag == "span":
+                style = attrs_d.get("style") or ""
+                m = re.search(r"font-weight:\s*(\d+)", style)
+                if m:
+                    bold = int(m.group(1)) >= 700
+                else:
+                    bold = self._bold_stack[-1] if self._bold_stack else False
             else:
-                bold = self._bold_stack[-1] if self._bold_stack else False
+                bold = True
             self._bold_stack.append(bold)
         elif tag in ("p", "h2") and self._block is None:
             self._block = tag
@@ -129,14 +170,14 @@ class ProgramParser(HTMLParser):
     def handle_startendtag(self, tag: str, attrs) -> None:
         # e.g. <br/>; no special handling needed beyond what handle_starttag does
         self.handle_starttag(tag, attrs)
-        if tag == "span":
+        if tag in ("span", "strong", "b"):
             self._bold_stack.pop()
 
     def handle_endtag(self, tag: str) -> None:
         if tag in ("script", "style"):
             self._skip_depth = max(0, self._skip_depth - 1)
             return
-        if tag == "span" and self._bold_stack:
+        if tag in ("span", "strong", "b") and self._bold_stack:
             self._bold_stack.pop()
         elif tag in ("p", "h2") and self._block == tag:
             self._process_block(tag)
@@ -158,9 +199,15 @@ class ProgramParser(HTMLParser):
             header = bold_str or plain_str
             if header:
                 self._session = header
+                if self.gate_h2_re is not None and self.gate_h2_re.search(header):
+                    self._gate_open = True
             return
 
-        if not bold_str and not plain_str:
+        if not self._gate_open or (not bold_str and not plain_str):
+            return
+
+        if self.id_suffix_re is not None:
+            self._process_id_suffix_block(bold_str, plain_str)
             return
 
         if bold_str:
@@ -168,6 +215,12 @@ class ProgramParser(HTMLParser):
             if len(title) < 8 or " " not in title:
                 return  # too short to be a real title; likely stray UI text
             if not plain_str or ID_MARKER_RE.match(plain_str):
+                if self._pending_title is not None:
+                    # The previous bold-only paragraph was never followed by
+                    # an authors line, so it wasn't really a title -- it was
+                    # a session/heading label (e.g. "Long Presentation
+                    # Session (S6)") sitting outside any <h2>.
+                    self._session = self._pending_title
                 self._pending_title = title
                 self._pending_session = self._session
             else:
@@ -177,14 +230,47 @@ class ProgramParser(HTMLParser):
             self._emit(self._pending_title, plain_str, self._pending_session)
             self._pending_title = None
 
+    def _process_id_suffix_block(self, bold_str: str, plain_str: str) -> None:
+        if bold_str and not plain_str:
+            title = LEADING_ID_RE.sub("", bold_str).strip()
+            if len(title) >= 8 and " " in title:
+                self._last_bold_only = title
+            return
+        if plain_str and self._last_bold_only is not None:
+            m = self.id_suffix_re.search(plain_str)
+            if m:
+                self._emit(self._last_bold_only, plain_str[: m.start()].strip(), self._session)
+                self._last_bold_only = None
+
     def _emit(self, title: str, authors_raw: str, session: str) -> None:
         self.papers.append({"title": title, "authors": split_authors(authors_raw), "session": session})
+
+
+def clean_author_name(name: str) -> str:
+    """Strip a presenting-author ``*`` and a trailing ``(Affiliation)``."""
+    name = TRAILING_STAR_RE.sub("", name.strip()).strip()
+    name = TRAILING_AFFILIATION_RE.sub("", name).strip()
+    return name
 
 
 def split_authors(raw: str) -> list[str]:
     raw = raw.strip()
     parts = raw.split(";") if ";" in raw else raw.split(",")
-    return [clean(p) for p in parts if clean(p)]
+    names = (clean_author_name(clean(p)) for p in parts)
+    return [n for n in names if n]
+
+
+def dedupe_papers(papers: list[dict]) -> list[dict]:
+    """Drop exact title+author duplicates, keeping first-seen order."""
+    seen: set[tuple[str, tuple[str, ...]]] = set()
+    deduped = []
+    for p in papers:
+        key = (p["title"], tuple(p["authors"]))
+        if key in seen:
+            continue
+        seen.add(key)
+        deduped.append(p)
+    return deduped
 
 
 def get_html_cached(url: str, year: str, cache_dir: str) -> str:
@@ -200,12 +286,16 @@ def get_html_cached(url: str, year: str, cache_dir: str) -> str:
 
 def scrape_year(year: str, repo_root: str, cache_dir: str, limit: int) -> int:
     url = SITES[year]
-    log(f"Fetching IPCAI {year}: {url} ...")
+    config = _config_for(year)
+    log(f"Fetching IPCAI {year} ({config['mode']} mode): {url} ...")
     html_text = get_html_cached(url, year, cache_dir)
 
-    parser = ProgramParser()
+    parser = ProgramParser(
+        id_suffix_re=config.get("id_suffix_re"),
+        gate_h2_re=config.get("gate_h2_re"),
+    )
     parser.feed(html_text)
-    papers = parser.papers
+    papers = dedupe_papers(parser.papers)
     if limit:
         papers = papers[:limit]
 
@@ -227,7 +317,7 @@ def scrape_year(year: str, repo_root: str, cache_dir: str, limit: int) -> int:
 def main() -> int:
     repo_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     ap = argparse.ArgumentParser(description=__doc__)
-    ap.add_argument("--year", help="single IPCAI edition (default: all 2024-2026)")
+    ap.add_argument("--year", help="single IPCAI edition (default: all 2022-2026)")
     ap.add_argument("--cache-dir", help="raw-HTML cache dir (default: IPCAI/.cache)")
     ap.add_argument("--limit", type=int, default=0,
                     help="only write the first N papers per year (0 = all)")
