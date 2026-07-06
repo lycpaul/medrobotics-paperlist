@@ -108,6 +108,19 @@ def test_miccai_links(tmp_path):
     assert rec["links"]["paper_page"] == "http://page"
 
 
+def test_ipcai_links(tmp_path):
+    path = write_csv(tmp_path, "IPCAI2025_Paper_List_with_Abstract.csv",
+                     "Title,Authors,Session,Abstract,PDF,Paper Page\n"
+                     "Catheter Detection,\"Xi, L;Ma, Y\","
+                     "Accepted regular paper submissions,,,http://page\n")
+    [rec] = loader.load_file(path)
+    assert rec["conference"] == "IPCAI"
+    assert rec["session"] == "Accepted regular paper submissions"
+    assert rec["abstract"] == ""
+    assert rec["links"]["pdf"] == ""
+    assert rec["links"]["paper_page"] == "http://page"
+
+
 def test_rows_without_title_are_skipped(tmp_path):
     path = write_csv(tmp_path, "ICRA2024_Paper_List_with_Abstract.csv",
                      ",\"Doe, J\",ETH,Automation,Body.\n"
