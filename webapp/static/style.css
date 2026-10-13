@@ -92,7 +92,30 @@ button {
 button#reset { background: var(--panel-2); border: 1px solid var(--border); color: var(--text); }
 button:hover { filter: brightness(1.1); }
 
-.status { margin: 1rem 0 0.6rem; color: var(--muted); min-height: 1.2em; }
+.toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin: 1rem 0 0.6rem;
+}
+.status { flex: 1; color: var(--muted); min-height: 1.2em; }
+.page-size {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex: none;
+}
+.page-size select { padding: 0.3rem 0.4rem; }
+.export-btn {
+  flex: none;
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 0.4rem 0.8rem;
+  font-size: 0.85rem;
+}
+.export-btn:disabled { opacity: 0.4; cursor: default; }
 
 table {
   width: 100%;

@@ -1,4 +1,4 @@
-"""Search, filter, and paginate over the in-memory paper records.
+"""Search, filter, paginate, and export the in-memory paper records.
 
 Pure functions over a list of normalized records (see ``loader.py``). No state,
 no I/O — easy to test in isolation.
@@ -6,8 +6,11 @@ no I/O — easy to test in isolation.
 
 from __future__ import annotations
 
+import csv
+import io
+
 DEFAULT_PAGE_SIZE = 50
-MAX_PAGE_SIZE = 200
+MAX_PAGE_SIZE = 250
 
 
 def _as_set(values):
@@ -36,22 +39,29 @@ def _matches(record, q, conferences, years, keyword):
     return True
 
 
-def search(records, q="", conference=None, year=None, keyword="",
-           page=1, page_size=DEFAULT_PAGE_SIZE):
-    """Filter ``records`` and return one page of results.
+def filter_records(records, q="", conference=None, year=None, keyword=""):
+    """Return every record matching the filters, in source order.
 
-    Returns ``{"total", "page", "page_size", "results"}``. ``q`` matches
-    (case-insensitively) across title/abstract/keywords; ``keyword`` matches
-    across keywords/session. ``conference`` and ``year`` are exact-match filters
-    that accept a single value or a list (OR within a field, AND across fields).
+    ``q`` matches (case-insensitively) across title/abstract/keywords;
+    ``keyword`` matches across keywords/session. ``conference`` and ``year`` are
+    exact-match filters that accept a single value or a list (OR within a
+    field, AND across fields).
     """
     q = (q or "").strip().lower()
     keyword = (keyword or "").strip().lower()
     conferences = _as_set(conference)
     years = _as_set(year)
+    return [r for r in records if _matches(r, q, conferences, years, keyword)]
 
-    matched = [r for r in records
-               if _matches(r, q, conferences, years, keyword)]
+
+def search(records, q="", conference=None, year=None, keyword="",
+           page=1, page_size=DEFAULT_PAGE_SIZE):
+    """Filter ``records`` and return one page of results.
+
+    Returns ``{"total", "page", "page_size", "results"}``. Filter arguments are
+    as for ``filter_records``.
+    """
+    matched = filter_records(records, q, conference, year, keyword)
     total = len(matched)
 
     try:
@@ -81,3 +91,29 @@ def facets(records):
     conferences = sorted({r["conference"] for r in records})
     years = sorted({r["year"] for r in records}, reverse=True)
     return {"conferences": conferences, "years": years}
+
+
+EXPORT_COLUMNS = ["Title", "Authors", "Venue", "Session", "Keywords", "PDF",
+                  "Code", "Dataset", "Paper Page", "Abstract"]
+
+
+def to_csv(records):
+    """Serialize records to CSV text (with header) for download."""
+    buffer = io.StringIO()
+    writer = csv.writer(buffer)
+    writer.writerow(EXPORT_COLUMNS)
+    for r in records:
+        links = r.get("links") or {}
+        writer.writerow([
+            r["title"],
+            r["authors"],
+            f"{r['conference']} {r['year']}",
+            r["session"],
+            r["keywords"],
+            links.get("pdf", ""),
+            links.get("code", ""),
+            links.get("dataset", ""),
+            links.get("paper_page", ""),
+            r["abstract"],
+        ])
+    return buffer.getvalue()

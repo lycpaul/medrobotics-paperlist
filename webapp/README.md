@@ -11,8 +11,12 @@ files into one unified in-memory index and serves a single-page frontend.
 - **Filter by keyword / session / topic.**
 - **Links** to PDF / code / dataset / paper page where available (mainly MICCAI
   and MIDL).
-- **Paginated** results (50 per page) with a total count.
+- **Paginated** results with a total count; choose 10, 50, 100, or 250 per
+  page (remembered across visits).
 - Click any row to expand its **abstract**.
+- **Export CSV** downloads every result of the current search (all pages) with
+  title, authors, venue, session, keywords, PDF/code/dataset/page links, and
+  abstract.
 
 ## Run
 
@@ -32,7 +36,8 @@ The CSV files are read from the conference directories (`../ICRA`, `../IROS`,
 | --- | --- |
 | `GET /` | Single-page UI. |
 | `GET /api/facets` | Distinct conferences and years for the dropdowns. |
-| `GET /api/search` | `q`, `conference` (repeatable), `year` (repeatable), `keyword`, `page`, `page_size`. Returns `{total, page, page_size, results[]}`. |
+| `GET /api/search` | `q`, `conference` (repeatable), `year` (repeatable), `keyword`, `page`, `page_size` (1–250, default 50). Returns `{total, page, page_size, results[]}`. |
+| `GET /api/export` | Same filters as `/api/search` (no paging); downloads all matches as `paperlist_export.csv` (UTF-8 with BOM). |
 
 ## Layout
 
@@ -40,7 +45,7 @@ The CSV files are read from the conference directories (`../ICRA`, `../IROS`,
 webapp/
 ├── app.py          # Flask routes + startup CSV load
 ├── loader.py       # CSV -> normalized records (per-file schema handling)
-├── search.py       # filter / search / paginate
+├── search.py       # filter / search / paginate / CSV export
 ├── static/         # index.html, app.js, style.css
 └── tests/          # pytest unit tests for loader and search
 ```

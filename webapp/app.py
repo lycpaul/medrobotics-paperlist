@@ -10,7 +10,7 @@ from __future__ import annotations
 import argparse
 import logging
 
-from flask import Flask, jsonify, request, send_from_directory
+from flask import Flask, Response, jsonify, request, send_from_directory
 
 import loader
 import search
@@ -54,6 +54,27 @@ def api_search():
         page_size=args.get("page_size", search.DEFAULT_PAGE_SIZE),
     )
     return jsonify(result)
+
+
+@app.route("/api/export")
+def api_export():
+    """Download every paper matching the search filters as a CSV file."""
+    args = request.args
+    matched = search.filter_records(
+        RECORDS,
+        q=args.get("q", ""),
+        conference=args.getlist("conference"),
+        year=args.getlist("year"),
+        keyword=args.get("keyword", ""),
+    )
+    # A UTF-8 BOM lets Excel detect the encoding of non-ASCII names.
+    body = "﻿" + search.to_csv(matched)
+    return Response(
+        body,
+        mimetype="text/csv",
+        headers={"Content-Disposition":
+                 'attachment; filename="paperlist_export.csv"'},
+    )
 
 
 def main():

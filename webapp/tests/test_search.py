@@ -116,3 +116,25 @@ def test_facets():
     result = search.facets(RECORDS)
     assert result["conferences"] == ["ICRA", "IROS", "MICCAI"]
     assert result["years"] == [2025, 2024, 2023]
+
+
+def test_filter_records_returns_all_matches_unpaginated():
+    many = [make_record(title=f"Paper {i}") for i in range(250)]
+    assert len(search.filter_records(many, q="paper")) == 250
+    assert search.filter_records(RECORDS, conference="IROS")[0]["title"] == \
+        "Grasping objects"
+
+
+def test_to_csv_columns_and_quoting():
+    import csv
+    import io
+
+    record = make_record(conference="MICCAI", year=2026, title='A "quoted", title',
+                         authors="Doe, Jane; Roe, Rick", session="Seg",
+                         keywords="MRI", abstract="line one\nline two")
+    record["links"] = {"pdf": "http://x/p.pdf", "code": "http://x/code"}
+    rows = list(csv.reader(io.StringIO(search.to_csv([record]))))
+    assert rows[0] == search.EXPORT_COLUMNS
+    assert rows[1] == ['A "quoted", title', "Doe, Jane; Roe, Rick",
+                       "MICCAI 2026", "Seg", "MRI", "http://x/p.pdf",
+                       "http://x/code", "", "", "line one\nline two"]

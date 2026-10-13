@@ -12,6 +12,8 @@ const prevBtn = document.getElementById("prev");
 const nextBtn = document.getElementById("next");
 const pageInfo = document.getElementById("page-info");
 const themeToggle = document.getElementById("theme-toggle");
+const exportBtn = document.getElementById("export");
+const pageSizeSelect = document.getElementById("page-size");
 
 // --- Theme (light/dark) ---------------------------------------------------
 const THEME_KEY = "paperlist-theme";
@@ -43,9 +45,13 @@ themeToggle.addEventListener("click", () => {
 
 initTheme();
 
-const PAGE_SIZE = 50;
+const PAGE_SIZE_KEY = "paperlist-page-size";
+let pageSize = 50;
 let currentPage = 1;
 let totalResults = 0;
+// Filter params of the last search run, so Export matches what is shown even
+// if the form has been edited since.
+let lastFilters = "";
 
 function selectedValues(select) {
   return Array.from(select.selectedOptions).map((o) => o.value);
@@ -64,14 +70,19 @@ function highlight(escaped, term) {
   return escaped.replace(new RegExp(safe, "gi"), (m) => `<mark>${m}</mark>`);
 }
 
-function buildQuery(page) {
+function buildFilters() {
   const params = new URLSearchParams();
   if (qInput.value.trim()) params.set("q", qInput.value.trim());
   if (keywordInput.value.trim()) params.set("keyword", keywordInput.value.trim());
   selectedValues(conferenceSelect).forEach((c) => params.append("conference", c));
   selectedValues(yearSelect).forEach((y) => params.append("year", y));
+  return params;
+}
+
+function buildQuery(page) {
+  const params = buildFilters();
   params.set("page", page);
-  params.set("page_size", PAGE_SIZE);
+  params.set("page_size", pageSize);
   return params.toString();
 }
 
@@ -128,7 +139,7 @@ function renderRows(results, term) {
 }
 
 function updatePager() {
-  const totalPages = Math.max(1, Math.ceil(totalResults / PAGE_SIZE));
+  const totalPages = Math.max(1, Math.ceil(totalResults / pageSize));
   pager.hidden = totalResults === 0;
   pageInfo.textContent = `Page ${currentPage} of ${totalPages}`;
   prevBtn.disabled = currentPage <= 1;
@@ -138,14 +149,17 @@ function updatePager() {
 async function runSearch(page) {
   currentPage = page;
   statusEl.textContent = "Searching…";
+  exportBtn.disabled = true;
   try {
     const resp = await fetch(`/api/search?${buildQuery(page)}`);
     if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
     const data = await resp.json();
     totalResults = data.total;
+    lastFilters = buildFilters().toString();
+    exportBtn.disabled = data.total === 0;
     renderRows(data.results, qInput.value.trim());
-    const shownFrom = data.total ? (page - 1) * PAGE_SIZE + 1 : 0;
-    const shownTo = Math.min(page * PAGE_SIZE, data.total);
+    const shownFrom = data.total ? (page - 1) * pageSize + 1 : 0;
+    const shownTo = Math.min(page * pageSize, data.total);
     statusEl.textContent = data.total
       ? `${data.total.toLocaleString()} result(s) — showing ${shownFrom}–${shownTo}`
       : "0 results";
@@ -179,6 +193,28 @@ document.getElementById("reset").addEventListener("click", () => {
   form.reset();
   runSearch(1);
 });
+
+exportBtn.addEventListener("click", () => {
+  // The server responds with Content-Disposition: attachment, so this downloads
+  // the file without navigating away.
+  window.location.href = `/api/export?${lastFilters}`;
+});
+
+function initPageSize() {
+  const saved = localStorage.getItem(PAGE_SIZE_KEY);
+  if (saved && Array.from(pageSizeSelect.options).some((o) => o.value === saved)) {
+    pageSizeSelect.value = saved;
+  }
+  pageSize = Number(pageSizeSelect.value);
+}
+
+pageSizeSelect.addEventListener("change", () => {
+  pageSize = Number(pageSizeSelect.value);
+  localStorage.setItem(PAGE_SIZE_KEY, pageSizeSelect.value);
+  runSearch(1);
+});
+
+initPageSize();
 
 prevBtn.addEventListener("click", () => {
   if (currentPage > 1) runSearch(currentPage - 1);
