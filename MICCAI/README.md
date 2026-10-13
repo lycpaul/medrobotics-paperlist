@@ -9,6 +9,7 @@ full records including abstracts.
 
 | Year | Papers | Topic categories | With code | With dataset |
 | --- | --- | --- | --- | --- |
+| 2026 | 1,165 | 81 | 856 | 462 |
 | 2025 | 1,027 | 59 | 710 | 375 |
 | 2024 | 856 | 69 | 581 | 310 |
 | 2023 | 730 | 57 | 467 | 285 |
@@ -18,12 +19,16 @@ full records including abstracts.
 "Topic categories" is the number of distinct labels in the `Topics` column;
 each paper carries several. Across every year the most common topics are
 **Image Segmentation**, **Computer-Aided Diagnosis**, and **MRI** imaging.
-Accepted-paper counts have grown steadily (531 → 1,027), as has the share of
-papers releasing code (≈51% → ≈69%).
+Accepted-paper counts have grown steadily (531 → 1,165), as has the share of
+papers releasing code (≈51% → ≈73%).
 
 > Note: MICCAI 2025 reformatted its topic labels into a hierarchical
 > "Area -> Subtopic" form (earlier years use a flatter "Area - Subtopic"), so
 > the category counts are not strictly comparable across the 2024/2025 boundary.
+> MICCAI 2026 keeps the hierarchical form but adds more subtopics and tweaks
+> some spellings (e.g. `Computer-Aided Diagnosis`, `CT / X-ray` vs. 2025's
+> `Computer Aided Diagnosis`, `CT / X-Ray`), so match labels case- and
+> hyphen-insensitively when comparing 2025 and 2026.
 
 ## Sources & credits
 
@@ -33,6 +38,7 @@ the respective conference organizers.
 
 | Year | Source |
 | --- | --- |
+| MICCAI 2026 | https://papers.miccai.org/miccai-2026/ |
 | MICCAI 2025 | https://papers.miccai.org/miccai-2025/ |
 | MICCAI 2024 | https://papers.miccai.org/miccai-2024/ |
 | MICCAI 2023 | https://conferences.miccai.org/2023/papers/ |
@@ -52,7 +58,7 @@ eight columns:
 | `Abstract` | Full abstract. |
 | `Code` | `;`-separated code-repository URL(s); empty when not provided. |
 | `Dataset` | `;`-separated dataset URL(s); empty when not provided. |
-| `PDF` | Open-access PDF link (2024 – 2025), or the DOI / SpringerLink (2021 – 2023, which have no open-access PDF). |
+| `PDF` | Open-access PDF link (2024 – 2026), or the DOI / SpringerLink (2021 – 2023, which have no open-access PDF). |
 | `Paper Page` | The per-paper detail page the record was scraped from. |
 
 ## Regenerating the data
@@ -60,10 +66,11 @@ eight columns:
 The CSVs are produced by [`../scripts/scrape_miccai.py`](../scripts/scrape_miccai.py)
 (Python standard library only — no dependencies). The hosting and HTML layout
 changed across editions, so the scraper picks a site profile per year
-automatically.
+automatically; years without an explicit entry (such as 2026) fall back to the
+modern `papers.miccai.org/miccai-<year>/` layout.
 
 ```bash
-python scripts/scrape_miccai.py --year 2025      # any year 2021–2025
+python scripts/scrape_miccai.py --year 2026      # any year 2021–2026
 python scripts/scrape_miccai.py --year 2025 --limit 10   # quick smoke test
 ```
 

@@ -18,10 +18,10 @@ each conference subdirectory's `README.md` for the per-year sources and credits.
 | --- | --- | --- | --- | --- | --- |
 | [ICRA](ICRA/README.md) | Robotics | 2023 – 2026 | 4 | 8,968 | `.md` + `.csv` |
 | [IROS](IROS/README.md) | Robotics | 2023 – 2025 | 3 | 5,966 | `.md` + `.csv` |
-| [MICCAI](MICCAI/README.md) | Medical imaging | 2021 – 2025 | 5 | 3,717 | `.csv` only |
+| [MICCAI](MICCAI/README.md) | Medical imaging | 2021 – 2026 | 6 | 4,882 | `.csv` only |
 | [MIDL](MIDL/README.md) | Medical imaging | 2023 – 2026 | 4 | 538 | `.csv` only |
 | IPCAI | Medical robotics | 2022 – 2026 | 5 | 320 | `.csv` only |
-| **Total** | | | **21** | **19,509** | |
+| **Total** | | | **22** | **20,674** | |
 
 Per-year paper counts and topic/session breakdowns live in each conference's
 own `README.md`. Counts are taken from the canonical `.md` lists for ICRA/IROS
@@ -71,7 +71,8 @@ paperlist/
 │   ├── MICCAI2022_Paper_List_with_Abstract.csv
 │   ├── MICCAI2023_Paper_List_with_Abstract.csv
 │   ├── MICCAI2024_Paper_List_with_Abstract.csv
-│   └── MICCAI2025_Paper_List_with_Abstract.csv
+│   ├── MICCAI2025_Paper_List_with_Abstract.csv
+│   └── MICCAI2026_Paper_List_with_Abstract.csv
 ├── MIDL/
 │   ├── README.md
 │   ├── MIDL2023_Paper_List_with_Abstract.csv
@@ -145,7 +146,7 @@ header row vary by file:
 | `IROS/IROS2023_..._with_Abstract.csv` | no  | `Title, Authors (with affiliation), Keywords, Abstract` |
 | `IROS/IROS2024_..._with_Abstract.csv` | no  | `Title, Authors, (Keywords), (Abstract)` |
 | `IROS/IROS2025_..._with_Abstract.csv` | yes | `Session, Paper Title, Author List, Keywords, Abstract` |
-| `MICCAI/MICCAI2021–2025_..._with_Abstract.csv` | yes | `Title, Authors, Topics, Abstract, Code, Dataset, PDF, Paper Page` |
+| `MICCAI/MICCAI2021–2026_..._with_Abstract.csv` | yes | `Title, Authors, Topics, Abstract, Code, Dataset, PDF, Paper Page` |
 | `MIDL/MIDL2023–2026_..._with_Abstract.csv` | yes | `Title, Authors, Session, Keywords, TL;DR, Abstract, Community Implementations, PDF, Paper Page` |
 | `IPCAI/IPCAI2022–2026_..._with_Abstract.csv` | yes | `Title, Authors, Session, Abstract, PDF, Paper Page` |
 
@@ -174,7 +175,7 @@ Column meanings:
 - **Topics** (MICCAI) — the paper's topic categories, `; `-separated.
 - **Code / Dataset** (MICCAI) — code-repository and dataset URLs where the
   authors provided them, `;`-separated; empty otherwise.
-- **PDF** (MICCAI) — the open-access PDF link (2024 – 2025) or, where no PDF is
+- **PDF** (MICCAI) — the open-access PDF link (2024 – 2026) or, where no PDF is
   published, the paper's DOI / SpringerLink (2021 – 2023).
 - **Paper Page** (MICCAI / MIDL / IPCAI) — the per-paper detail page the record
   was scraped from (the OpenReview forum page for MIDL); for IPCAI, which has
