@@ -11,12 +11,14 @@ abstracts; 2026 has the CSV only.
 | Year | Papers | Program sessions |
 | --- | --- | --- |
 | 2026 | 1,929 | 348 |
-| 2025 | 2,675 | 359 |
+| 2025 | 2,642 | 359 |
 | 2024 | 1,587 | — |
-| 2023 | 1,704 | — |
+| 2023 | 1,706 | — |
+| **Total** | **7,864** | |
 
-"Program sessions" counts the distinct session/track labels papers are grouped
-under. The 2023 and 2024 lists don't carry session labels, so it isn't
+"Papers" counts distinct papers (unique titles) in each year's
+`_with_Abstract.csv`. "Program sessions" counts the distinct session/track
+labels papers are grouped under. The 2023 and 2024 lists don't carry session labels, so it isn't
 computable for those years; the 2023 list does include a summary table spanning
 **34 keyword categories** (e.g. Planning, Motion and Path Planning,
 Reinforcement Learning, Grasping).
@@ -25,6 +27,16 @@ The 2026 list also records each paper's presentation **type**: 1,308 Lightning
 Talks, 578 Focused Sessions, 32 Award Candidates, and 11 Special Sessions.
 20 of the 1,929 papers have no abstract on the program site, so their
 `Abstract` cell is empty.
+
+> Note: two lists differ between the `.md` and the CSV, and the figures above
+> come from the CSVs.
+>
+> - `IROS2023_Paper_List_with_Abstract.csv` repeats most of its rows: 3,166
+>   rows hold 1,706 distinct papers. That is two more than
+>   `IROS2023_Paper_List.md` (1,704), which lacks "Robots That Teach and Learn
+>   with a Human Touch" and "Merging Paths: The Shared History and Convergent
+>   Future of AI and Robotics".
+> - `IROS2025_Paper_List.md` lists 2,675 papers, 33 more than the CSV (2,642).
 
 ## Sources & credits
 

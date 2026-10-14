@@ -16,17 +16,21 @@ each conference subdirectory's `README.md` for the per-year sources and credits.
 
 | Conference | Field | Years | Lists | Papers | Files |
 | --- | --- | --- | --- | --- | --- |
-| [ICRA](ICRA/README.md) | Robotics | 2023 – 2026 | 4 | 8,968 | `.md` + `.csv` |
-| [IROS](IROS/README.md) | Robotics | 2023 – 2026 | 4 | 7,895 | `.md` + `.csv` (2026: `.csv` only) |
+| [ICRA](ICRA/README.md) | Robotics | 2023 – 2026 | 4 | 9,098 | `.md` + `.csv` |
+| [IROS](IROS/README.md) | Robotics | 2023 – 2026 | 4 | 7,864 | `.md` + `.csv` (2026: `.csv` only) |
 | [MICCAI](MICCAI/README.md) | Medical imaging | 2021 – 2026 | 6 | 4,882 | `.csv` only |
 | [MIDL](MIDL/README.md) | Medical imaging | 2023 – 2026 | 4 | 538 | `.csv` only |
 | [IPCAI](IPCAI/README.md) | Medical robotics | 2022 – 2026 | 5 | 320 | `.csv` only |
-| **Total** | | | **23** | **22,603** | |
+| **Total** | | | **23** | **22,702** | |
 
 Per-year paper counts and topic/session breakdowns live in each conference's
-own `README.md`. Counts are taken from the canonical `.md` lists for ICRA/IROS
-and from the generated CSVs for MICCAI and IROS 2026 (and for ICRA 2025, whose
-`.md` currently duplicates the IROS 2025 list).
+own `README.md`. All counts are distinct papers (unique titles) in the
+`_with_Abstract.csv` files, the same records the search web app indexes. A
+paper listed more than once in a CSV is counted once. This matters for IROS
+2023, whose CSV repeats most of its rows (3,166 rows for 1,706 papers), and
+for a few ICRA 2026 papers listed in several sessions. Where a `.md` list
+disagrees with its CSV, the CSV is used; see the ICRA and IROS READMEs for
+the differences.
 
 ## Search web app
 
