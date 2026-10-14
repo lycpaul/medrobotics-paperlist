@@ -6,11 +6,15 @@ files into one unified in-memory index and serves a single-page frontend.
 
 ## Features
 
-- **Keyword search** across title, abstract, and keywords (case-insensitive).
+- **Keyword search** across title, abstract, and keywords (case-insensitive),
+  with clickable suggested terms (e.g. robotics, ultrasound, surgical).
+  Use `,` for OR and `+` for AND: `surgical,surgery` matches either word,
+  `ultrasound+robot` needs both, and `ultrasound+robot,surgery` means
+  (ultrasound AND robot) OR surgery.
 - **Filter by conference and year** (multi-select).
 - **Filter by keyword / session / topic.**
 - **Links** to PDF / code / dataset / paper page where available (mainly MICCAI
-  and MIDL).
+  and MIDL), plus a **Google** link on every paper that searches its title.
 - **Paginated** results with a total count; choose 10, 50, 100, or 250 per
   page (remembered across visits).
 - Click any row to expand its **abstract**.

@@ -10,7 +10,7 @@
   <header>
     <div>
       <h1>Paper List Search</h1>
-      <p class="subtitle">ICRA &middot; IROS &middot; MICCAI &middot; MIDL &middot; IPCAI accepted papers</p>
+      <p class="subtitle" id="coverage">ICRA &middot; IROS &middot; MICCAI &middot; MIDL &middot; IPCAI accepted papers</p>
     </div>
     <button type="button" id="theme-toggle" class="theme-toggle"
             aria-label="Toggle light/dark theme"></button>
@@ -19,7 +19,8 @@
   <form id="search-form" class="controls" autocomplete="off">
     <div class="field field-grow">
       <label for="q">Search title &amp; abstract</label>
-      <input type="text" id="q" name="q" placeholder="e.g. lidar odometry, segmentation">
+      <input type="text" id="q" name="q" placeholder="e.g. surgical,surgery (any) or ultrasound+robot (all)"
+             title="Use , for OR (surgical,surgery) and + for AND (ultrasound+robot)">
     </div>
     <div class="field">
       <label for="conference">Conference</label>
@@ -36,6 +37,9 @@
     <div class="field field-actions">
       <button type="submit">Search</button>
       <button type="button" id="reset">Reset</button>
+    </div>
+    <div id="suggestions" class="suggestions">
+      <span class="suggestions-label">Try:</span>
     </div>
   </form>
 

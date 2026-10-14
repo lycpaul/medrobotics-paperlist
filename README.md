@@ -20,7 +20,7 @@ each conference subdirectory's `README.md` for the per-year sources and credits.
 | [IROS](IROS/README.md) | Robotics | 2023 – 2026 | 4 | 7,895 | `.md` + `.csv` (2026: `.csv` only) |
 | [MICCAI](MICCAI/README.md) | Medical imaging | 2021 – 2026 | 6 | 4,882 | `.csv` only |
 | [MIDL](MIDL/README.md) | Medical imaging | 2023 – 2026 | 4 | 538 | `.csv` only |
-| IPCAI | Medical robotics | 2022 – 2026 | 5 | 320 | `.csv` only |
+| [IPCAI](IPCAI/README.md) | Medical robotics | 2022 – 2026 | 5 | 320 | `.csv` only |
 | **Total** | | | **23** | **22,603** | |
 
 Per-year paper counts and topic/session breakdowns live in each conference's
@@ -81,6 +81,7 @@ paperlist/
 │   ├── MIDL2025_Paper_List_with_Abstract.csv
 │   └── MIDL2026_Paper_List_with_Abstract.csv
 ├── IPCAI/
+│   ├── README.md
 │   ├── IPCAI2022_Paper_List_with_Abstract.csv
 │   ├── IPCAI2023_Paper_List_with_Abstract.csv
 │   ├── IPCAI2024_Paper_List_with_Abstract.csv
@@ -90,7 +91,7 @@ paperlist/
 │   ├── scrape_iros.py     # regenerates the IROS 2026 CSV (see IROS/README.md)
 │   ├── scrape_miccai.py   # regenerates the MICCAI CSVs (see MICCAI/README.md)
 │   ├── scrape_midl.py     # regenerates the MIDL CSVs (see MIDL/README.md)
-│   └── scrape_ipcai.py    # regenerates the IPCAI CSVs
+│   └── scrape_ipcai.py    # regenerates the IPCAI CSVs (see IPCAI/README.md)
 └── webapp/                # local search web app (see webapp/README.md)
     ├── app.py             # Flask backend: loads the CSVs, serves the API
     ├── loader.py          # normalizes the per-file CSV schemas

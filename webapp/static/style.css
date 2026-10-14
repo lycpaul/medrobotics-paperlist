@@ -40,6 +40,8 @@ header {
 }
 header h1 { margin: 0; font-size: 1.6rem; }
 .subtitle { margin: 0.2rem 0 0; color: var(--muted); }
+.coverage-item { white-space: nowrap; }
+.coverage-item strong { color: var(--text); font-weight: 600; }
 
 .theme-toggle {
   flex: none;
@@ -91,6 +93,24 @@ button {
 }
 button#reset { background: var(--panel-2); border: 1px solid var(--border); color: var(--text); }
 button:hover { filter: brightness(1.1); }
+
+.suggestions {
+  flex-basis: 100%;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+}
+.suggestions-label { font-size: 0.8rem; color: var(--muted); }
+.chip {
+  background: var(--accent-soft);
+  color: var(--accent);
+  border: 1px solid transparent;
+  border-radius: 999px;
+  padding: 0.2rem 0.7rem;
+  font-size: 0.8rem;
+}
+.chip:hover { filter: none; border-color: var(--accent); }
 
 .toolbar {
   display: flex;

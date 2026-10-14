@@ -14,6 +14,14 @@ const pageInfo = document.getElementById("page-info");
 const themeToggle = document.getElementById("theme-toggle");
 const exportBtn = document.getElementById("export");
 const pageSizeSelect = document.getElementById("page-size");
+const suggestionsEl = document.getElementById("suggestions");
+const coverageEl = document.getElementById("coverage");
+
+// Clickable example queries shown under the search box.
+const SUGGESTIONS = [
+  "robotics", "ultrasound", "surgical,surgery",
+  "endoscopic", "haptic", "segmentation", "registration",
+];
 
 // --- Theme (light/dark) ---------------------------------------------------
 const THEME_KEY = "paperlist-theme";
@@ -63,11 +71,17 @@ function escapeHtml(text) {
   return div.innerHTML;
 }
 
-// Highlight occurrences of `term` in already-escaped text.
-function highlight(escaped, term) {
-  if (!term) return escaped;
-  const safe = term.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  return escaped.replace(new RegExp(safe, "gi"), (m) => `<mark>${m}</mark>`);
+// Highlight every term of a query (split on the `,` OR and `+` AND operators)
+// in already-escaped text. Longer terms go first so they win over prefixes.
+function highlight(escaped, query) {
+  const terms = (query || "")
+    .split(/[,+]/)
+    .map((t) => t.trim())
+    .filter(Boolean)
+    .sort((a, b) => b.length - a.length)
+    .map((t) => t.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
+  if (!terms.length) return escaped;
+  return escaped.replace(new RegExp(terms.join("|"), "gi"), (m) => `<mark>${m}</mark>`);
 }
 
 function buildFilters() {
@@ -86,17 +100,23 @@ function buildQuery(page) {
   return params.toString();
 }
 
-function linkCell(links) {
-  if (!links) return '<span class="empty">—</span>';
+function linkCell(links, title) {
   const labels = { pdf: "PDF", code: "Code", dataset: "Data", paper_page: "Page" };
   const parts = [];
   for (const key of ["pdf", "code", "dataset", "paper_page"]) {
-    const url = links[key];
+    const url = links && links[key];
     if (url) {
       parts.push(
         `<a href="${escapeHtml(url)}" target="_blank" rel="noopener">${labels[key]}</a>`
       );
     }
+  }
+  if (title) {
+    const google = `https://www.google.com/search?q=${encodeURIComponent(title)}`;
+    parts.push(
+      `<a href="${escapeHtml(google)}" target="_blank" rel="noopener"` +
+      ` title="Search this title on Google">Google</a>`
+    );
   }
   return parts.length ? parts.join("") : '<span class="empty">—</span>';
 }
@@ -118,7 +138,7 @@ function renderRows(results, term) {
       `<td class="authors-cell">${escapeHtml(paper.authors)}</td>` +
       `<td><span class="venue-badge">${escapeHtml(paper.conference)} ${paper.year}</span></td>` +
       `<td class="topic-cell">${escapeHtml(topic)}</td>` +
-      `<td class="links-cell">${linkCell(paper.links)}</td>`;
+      `<td class="links-cell">${linkCell(paper.links, paper.title)}</td>`;
 
     const abstractRow = document.createElement("tr");
     abstractRow.className = "abstract-row";
@@ -146,7 +166,12 @@ function updatePager() {
   nextBtn.disabled = currentPage >= totalPages;
 }
 
+// Bumped on every search so a slow, older response (e.g. one still in flight
+// when Reset is clicked) can't overwrite the newer results.
+let searchSeq = 0;
+
 async function runSearch(page) {
+  const seq = ++searchSeq;
   currentPage = page;
   statusEl.textContent = "Searching…";
   exportBtn.disabled = true;
@@ -154,6 +179,7 @@ async function runSearch(page) {
     const resp = await fetch(`/api/search?${buildQuery(page)}`);
     if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
     const data = await resp.json();
+    if (seq !== searchSeq) return;
     totalResults = data.total;
     lastFilters = buildFilters().toString();
     exportBtn.disabled = data.total === 0;
@@ -165,19 +191,46 @@ async function runSearch(page) {
       : "0 results";
     updatePager();
   } catch (err) {
-    statusEl.textContent = `Error: ${err.message}`;
+    if (seq === searchSeq) statusEl.textContent = `Error: ${err.message}`;
   }
+}
+
+// [2021, 2022, 2023, 2025] -> "2021–2023, 2025"
+function yearRanges(years) {
+  const runs = [];
+  for (const y of years) {
+    const last = runs[runs.length - 1];
+    if (last && y === last[1] + 1) last[1] = y;
+    else runs.push([y, y]);
+  }
+  return runs.map(([a, b]) => (a === b ? `${a}` : `${a}–${b}`)).join(", ");
+}
+
+// Replace the static header subtitle with each conference's year coverage.
+function renderCoverage(coverage) {
+  if (!coverage || !coverage.length) return;
+  const items = coverage.map(
+    (c) =>
+      `<span class="coverage-item"><strong>${escapeHtml(c.conference)}</strong> ` +
+      `${yearRanges(c.years)}</span>`
+  );
+  coverageEl.innerHTML = `Accepted papers: ${items.join(" &middot; ")}`;
 }
 
 async function loadFacets() {
   try {
     const resp = await fetch("/api/facets");
     const data = await resp.json();
+    renderCoverage(data.coverage);
     for (const c of data.conferences) {
       conferenceSelect.add(new Option(c, c));
     }
     for (const y of data.years) {
       yearSelect.add(new Option(y, y));
+    }
+    // Size each list to its options so every choice is visible without scrolling.
+    for (const select of [conferenceSelect, yearSelect]) {
+      select.size = Math.max(select.options.length, 1);
     }
   } catch (err) {
     statusEl.textContent = `Could not load filters: ${err.message}`;
@@ -189,8 +242,31 @@ form.addEventListener("submit", (e) => {
   runSearch(1);
 });
 
+for (const word of SUGGESTIONS) {
+  const chip = document.createElement("button");
+  chip.type = "button";
+  chip.className = "chip";
+  chip.textContent = word;
+  chip.addEventListener("click", () => {
+    qInput.value = word;
+    runSearch(1);
+  });
+  suggestionsEl.appendChild(chip);
+}
+
+// Explicitly empty every filter (rather than form.reset(), which restores
+// defaults) and show the unfiltered list.
+function clearFilters() {
+  qInput.value = "";
+  keywordInput.value = "";
+  for (const select of [conferenceSelect, yearSelect]) {
+    for (const option of select.options) option.selected = false;
+    select.scrollTop = 0;
+  }
+}
+
 document.getElementById("reset").addEventListener("click", () => {
-  form.reset();
+  clearFilters();
   runSearch(1);
 });
 

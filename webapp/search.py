@@ -22,15 +22,31 @@ def _as_set(values):
     return {str(v).strip() for v in values if str(v).strip()}
 
 
-def _matches(record, q, conferences, years, keyword):
+def parse_query(q):
+    """Split a search string into OR-groups of AND-terms.
+
+    ``,`` separates alternatives and ``+`` joins terms that must all appear, so
+    ``"surgical,surgery"`` matches either word, ``"ultrasound+robot"`` needs
+    both, and ``"ultrasound+robot,surgery"`` means (ultrasound AND robot) OR
+    surgery. Terms are lowercased and stripped; empty ones are dropped.
+    """
+    groups = []
+    for alternative in (q or "").lower().split(","):
+        terms = [t.strip() for t in alternative.split("+") if t.strip()]
+        if terms:
+            groups.append(terms)
+    return groups
+
+
+def _matches(record, q_groups, conferences, years, keyword):
     if conferences and record["conference"] not in conferences:
         return False
     if years and str(record["year"]) not in years:
         return False
-    if q:
+    if q_groups:
         haystack = " ".join((
             record["title"], record["abstract"], record["keywords"])).lower()
-        if q not in haystack:
+        if not any(all(t in haystack for t in terms) for terms in q_groups):
             return False
     if keyword:
         haystack = " ".join((record["keywords"], record["session"])).lower()
@@ -42,16 +58,18 @@ def _matches(record, q, conferences, years, keyword):
 def filter_records(records, q="", conference=None, year=None, keyword=""):
     """Return every record matching the filters, in source order.
 
-    ``q`` matches (case-insensitively) across title/abstract/keywords;
-    ``keyword`` matches across keywords/session. ``conference`` and ``year`` are
+    ``q`` matches (case-insensitively) across title/abstract/keywords and
+    supports ``,`` (OR) and ``+`` (AND) — see ``parse_query``. ``keyword``
+    matches across keywords/session. ``conference`` and ``year`` are
     exact-match filters that accept a single value or a list (OR within a
     field, AND across fields).
     """
-    q = (q or "").strip().lower()
+    q_groups = parse_query(q)
     keyword = (keyword or "").strip().lower()
     conferences = _as_set(conference)
     years = _as_set(year)
-    return [r for r in records if _matches(r, q, conferences, years, keyword)]
+    return [r for r in records
+            if _matches(r, q_groups, conferences, years, keyword)]
 
 
 def search(records, q="", conference=None, year=None, keyword="",
@@ -87,10 +105,16 @@ def search(records, q="", conference=None, year=None, keyword="",
 
 
 def facets(records):
-    """Return distinct sorted conferences and years for filter dropdowns."""
+    """Return distinct sorted conferences and years for filter dropdowns, plus
+    ``coverage``: each conference's years (ascending) for the page header."""
     conferences = sorted({r["conference"] for r in records})
     years = sorted({r["year"] for r in records}, reverse=True)
-    return {"conferences": conferences, "years": years}
+    coverage = [
+        {"conference": c,
+         "years": sorted({r["year"] for r in records if r["conference"] == c})}
+        for c in conferences
+    ]
+    return {"conferences": conferences, "years": years, "coverage": coverage}
 
 
 EXPORT_COLUMNS = ["Title", "Authors", "Venue", "Session", "Keywords", "PDF",

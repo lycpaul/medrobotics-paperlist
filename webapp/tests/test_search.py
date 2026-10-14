@@ -47,6 +47,35 @@ def test_keyword_search_matches_keywords_field():
     assert result["results"][0]["conference"] == "MICCAI"
 
 
+def test_parse_query_or_and_groups():
+    assert search.parse_query("Surgical, surgery") == [["surgical"], ["surgery"]]
+    assert search.parse_query("ultrasound + robot") == [["ultrasound", "robot"]]
+    assert search.parse_query("a+b,c") == [["a", "b"], ["c"]]
+    assert search.parse_query(" , + ,") == []
+    assert search.parse_query("continuum robot") == [["continuum robot"]]
+
+
+def test_comma_search_matches_any_term():
+    result = search.search(RECORDS, q="odometry,tumor")
+    assert result["total"] == 2
+    assert {r["conference"] for r in result["results"]} == {"ICRA", "MICCAI"}
+
+
+def test_plus_search_requires_all_terms():
+    assert search.search(RECORDS, q="robotic+manipulation")["total"] == 1
+    assert search.search(RECORDS, q="robotic+lidar")["total"] == 0
+
+
+def test_mixed_and_or_search():
+    result = search.search(RECORDS, q="robotic+lidar,tumor+imaging")
+    assert result["total"] == 1
+    assert result["results"][0]["conference"] == "MICCAI"
+
+
+def test_empty_operators_mean_no_text_filter():
+    assert search.search(RECORDS, q=" , + ")["total"] == len(RECORDS)
+
+
 def test_conference_filter():
     result = search.search(RECORDS, conference="IROS")
     assert result["total"] == 1
@@ -116,6 +145,11 @@ def test_facets():
     result = search.facets(RECORDS)
     assert result["conferences"] == ["ICRA", "IROS", "MICCAI"]
     assert result["years"] == [2025, 2024, 2023]
+    assert result["coverage"] == [
+        {"conference": "ICRA", "years": [2025]},
+        {"conference": "IROS", "years": [2024]},
+        {"conference": "MICCAI", "years": [2023]},
+    ]
 
 
 def test_filter_records_returns_all_matches_unpaginated():
