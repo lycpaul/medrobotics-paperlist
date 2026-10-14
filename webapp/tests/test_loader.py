@@ -93,6 +93,21 @@ def test_iros2024_empty_keyword_abstract(tmp_path):
     assert rec["abstract"] == ""
 
 
+def test_iros2026_type_column_ignored(tmp_path):
+    path = write_csv(tmp_path, "IROS2026_Paper_List_with_Abstract.csv",
+                     "Session,Type,Paper Title,Author List,Keywords,Abstract\n"
+                     "Surgical Robots,Lightning Talks,Needle Steering,"
+                     "\"Doe, Jane;Roe, Rick\",\"Surgical Robotics;Planning, "
+                     "Scheduling and Coordination\",Steering needles.\n")
+    [rec] = loader.load_file(path)
+    assert rec["session"] == "Surgical Robots"
+    assert rec["title"] == "Needle Steering"
+    assert rec["authors"] == "Doe, Jane;Roe, Rick"
+    assert rec["keywords"] == ("Surgical Robotics;Planning, Scheduling and "
+                               "Coordination")
+    assert rec["abstract"] == "Steering needles."
+
+
 def test_miccai_links(tmp_path):
     path = write_csv(tmp_path, "MICCAI2025_Paper_List_with_Abstract.csv",
                      "Title,Authors,Topics,Abstract,Code,Dataset,PDF,"
